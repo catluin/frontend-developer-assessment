@@ -1,147 +1,67 @@
 import './App.css';
-import { Image, Alert, Button, Container, Row, Col, Form, Table, Stack } from 'react-bootstrap';
-import React, { useState, useEffect } from 'react';
+import { Container, Row, Col } from 'react-bootstrap';
+import React, { useCallback, useEffect, useState } from 'react';
+import AddToDoForm from './components/AddToDoForm';
+import ToDoTable from './components/ToDoTable';
+import Header from './components/Header';
+import Footer from './components/Footer';
+import { getToDoItems } from './services/api';
 
-const axios = require('axios');
+/*
+Changes made to the project:
+- Component breakdown
+- Added functionality to mark todo item as completed
+- Added functionality to dispaly error messages
+- Added functionality to auto refresh todo list when any changes are made (it wasn't a requirement but it makes a better user experience)
+- Added unit tests for components with the most business logic in them
+
+Other changes I would make to the project that require a bit more effort:
+- Storybook, to allow devs to develop and test new components easily
+- Playwright, to have a set of automated end-to-end tests
+- All string values could be extracted into lang files to support multiple languages in the future
+- Header, Footer and ErrorMessage component should be unit tested too. I've omitted those tests because there is not much business logic happening in those components but in the real project everything should be tested.
+*/
+
+const getItems = async ({ setItems, setError }) => {
+  const result = await getToDoItems();
+  if (!result) { return; }
+  const { success, data, error } = result;
+  if (success) {
+    setItems(data);
+    return;
+  }
+  if (error) {
+    setError(error);
+  }
+};
 
 const App = () => {
-  const [description, setDescription] = useState('');
+  // Parent component is responsible for fetching items to make it possible to auto-refresh once item is added or marked as completed
   const [items, setItems] = useState([]);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    // todo
-  }, []);
+    getItems({ setItems, setError });
+  }, [setItems, setError]);
+
+  const onRefresh = useCallback(() => {
+    setError("");
+    getItems({ setItems, setError });
+  }, [setError]);
 
   const renderAddTodoItemContent = () => {
-    return (
-      <Container>
-        <h1>Add Item</h1>
-        <Form.Group as={Row} className="mb-3" controlId="formAddTodoItem">
-          <Form.Label column sm="2">
-            Description
-          </Form.Label>
-          <Col md="6">
-            <Form.Control
-              type="text"
-              placeholder="Enter description..."
-              value={description}
-              onChange={handleDescriptionChange}
-            />
-          </Col>
-        </Form.Group>
-        <Form.Group as={Row} className="mb-3 offset-md-2" controlId="formAddTodoItem">
-          <Stack direction="horizontal" gap={2}>
-            <Button variant="primary" onClick={() => handleAdd()}>
-              Add Item
-            </Button>
-            <Button variant="secondary" onClick={() => handleClear()}>
-              Clear
-            </Button>
-          </Stack>
-        </Form.Group>
-      </Container>
-    );
+    return <AddToDoForm data-testid="addToDoForm" onSuccess={onRefresh} />;
   };
 
   const renderTodoItemsContent = () => {
-    return (
-      <>
-        <h1>
-          Showing {items.length} Item(s){' '}
-          <Button variant="primary" className="pull-right" onClick={() => getItems()}>
-            Refresh
-          </Button>
-        </h1>
-
-        <Table striped bordered hover>
-          <thead>
-            <tr>
-              <th>Id</th>
-              <th>Description</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item) => (
-              <tr key={item.id}>
-                <td>{item.id}</td>
-                <td>{item.description}</td>
-                <td>
-                  <Button variant="warning" size="sm" onClick={() => handleMarkAsComplete(item)}>
-                    Mark as completed
-                  </Button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
-      </>
-    );
+    return <ToDoTable items={items} refreshItems={onRefresh} error={error} onError={setError} />;
   };
-
-  const handleDescriptionChange = (event) => {
-    // todo
-  };
-
-  async function getItems() {
-    try {
-      alert('todo');
-    } catch (error) {
-      console.error(error);
-    }
-  }
-
-  async function handleAdd() {
-    try {
-      alert('todo');
-    } catch (error) {
-      console.error(error);
-    }
-  }
-
-  function handleClear() {
-    setDescription('');
-  }
-
-  async function handleMarkAsComplete(item) {
-    try {
-      alert('todo');
-    } catch (error) {
-      console.error(error);
-    }
-  }
 
   return (
     <div className="App">
       <Container>
-        <Row>
-          <Col>
-            <Image src="clearPointLogo.png" fluid rounded />
-          </Col>
-        </Row>
-        <Row>
-          <Col>
-            <Alert variant="success">
-              <Alert.Heading>Todo List App</Alert.Heading>
-              Welcome to the ClearPoint frontend technical test. We like to keep things simple, yet clean so your
-              task(s) are as follows:
-              <br />
-              <br />
-              <ol className="list-left">
-                <li>Add the ability to add (POST) a Todo Item by calling the backend API</li>
-                <li>
-                  Display (GET) all the current Todo Items in the below grid and display them in any order you wish
-                </li>
-                <li>
-                  Bonus points for completing the 'Mark as completed' button code for allowing users to update and mark
-                  a specific Todo Item as completed and for displaying any relevant validation errors/ messages from the
-                  API in the UI
-                </li>
-                <li>Feel free to add unit tests and refactor the component(s) as best you see fit</li>
-              </ol>
-            </Alert>
-          </Col>
-        </Row>
+        {/* Extracted Header and Footer sections as components for readability */}
+        <Header />
         <Row>
           <Col>{renderAddTodoItemContent()}</Col>
         </Row>
@@ -150,14 +70,7 @@ const App = () => {
           <Col>{renderTodoItemsContent()}</Col>
         </Row>
       </Container>
-      <footer className="page-footer font-small teal pt-4">
-        <div className="footer-copyright text-center py-3">
-          © 2021 Copyright:
-          <a href="https://clearpoint.digital" target="_blank" rel="noreferrer">
-            clearpoint.digital
-          </a>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 };
